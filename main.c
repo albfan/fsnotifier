@@ -40,11 +40,35 @@
 #define VERSION_MSG "fsnotifier " VERSION "\n"
 
 #define USAGE_MSG \
-    "fsnotifier - IntelliJ IDEA companion program for watching and reporting file and directory structure modifications.\n\n" \
+    "fsnotifier - IntelliJ IDEA companion program for watching and reporting file and directory structure modifications.\n" \
+    "\n" \
     "fsnotifier utilizes \"user\" facility of syslog(3) - messages usually can be found in /var/log/user.log.\n" \
     "Verbosity is regulated via " LOG_ENV " environment variable, possible values are: " \
-    LOG_ENV_DEBUG ", " LOG_ENV_INFO ", " LOG_ENV_WARNING ", " LOG_ENV_ERROR ", " LOG_ENV_OFF "; default is " LOG_ENV_WARNING ".\n\n" \
-    "Use 'fsnotifier --selftest' to perform some self-diagnostics (output will be logged and printed to console).\n"
+    "   " LOG_ENV_DEBUG ", " LOG_ENV_INFO ", " LOG_ENV_WARNING ", " LOG_ENV_ERROR ", " LOG_ENV_OFF "; default is " LOG_ENV_WARNING ".\n" \
+    "\n" \
+    "Options: " \
+    "\n" \
+    "   --selftest  perform some self-diagnostics (output will be logged and printed to console).\n" \
+    "   --log-level Explicit set of log level.\n" \
+    "   --roots     paths to inspect. Values separated by comma. Relative or absolute.\n" \
+    "   --version   fsnotifier version.\n" \
+    "   --help      Show this help.\n" \
+    "\n" \
+    "Usage: " \
+    "\n" \
+    "   $ ./fsnotifier\n" \
+    "   ROOTS\n" \
+    "   <path to watch>\n" \
+    "   #\n" \
+    "\n" \
+    "From here file changes comes as a two line events\n"  \
+    "\n" \
+    "   EVENT\n" \
+    "   file/path/changed\n" \
+    "\n" \
+    "Events: \n" \
+    "CREATE, CHANGE, STATS, DELETE, RESET\n" \
+    "\n"
 
 #define HELP_MSG \
     "Try 'fsnotifier --help' for more information.\n"
@@ -71,7 +95,7 @@ static array* roots = NULL;
 static int log_level = 0;
 static bool self_test = false;
 
-static void init_log();
+static void init_log(char* param_level);
 static void run_self_test();
 static bool main_loop();
 static int read_input();
@@ -87,26 +111,38 @@ static void check_root_removal(const char*);
 
 
 int main(int argc, char** argv) {
-  if (argc > 1) {
-    if (strcmp(argv[1], "--help") == 0) {
+  char* param_level = NULL;
+  char* param_roots = NULL;
+
+  int param_pos = 1;
+  while (argc > param_pos) {
+    if (strcmp(argv[param_pos], "--help") == 0) {
       printf(USAGE_MSG);
       return 0;
     }
-    else if (strcmp(argv[1], "--version") == 0) {
+    else if (strcmp(argv[param_pos], "--version") == 0) {
       printf(VERSION_MSG);
       return 0;
     }
-    else if (strcmp(argv[1], "--selftest") == 0) {
+    else if (strcmp(argv[param_pos], "--selftest") == 0) {
       self_test = true;
     }
+    else if (strcmp(argv[param_pos], "--roots") == 0) {
+      param_roots = malloc(PATH_MAX);
+      strncpy(param_roots, argv[++param_pos], PATH_MAX);
+    }
+    else if (strcmp(argv[param_pos], "--log-level") == 0) {
+      param_level = argv[++param_pos];
+    }
     else {
-      printf("unrecognized option: %s\n", argv[1]);
+      printf("unrecognized option: %s\n", argv[param_pos]);
       printf(HELP_MSG);
       return 1;
     }
+    param_pos++;
   }
 
-  init_log();
+  init_log(param_level);
   if (!self_test) {
     userlog(LOG_INFO, "started (v." VERSION ")");
   }
@@ -122,6 +158,11 @@ int main(int argc, char** argv) {
     set_inotify_callback(&inotify_callback);
 
     if (!self_test) {
+      if (param_roots != NULL) {
+        array* new_roots = array_create(1);
+        array_push(new_roots, param_roots);
+        update_roots(new_roots);
+      }
       if (!main_loop()) {
         rv = 3;
       }
@@ -146,15 +187,23 @@ int main(int argc, char** argv) {
 }
 
 
-static void init_log() {
+static void init_log(char* param_level) {
   int level = LOG_WARNING;
 
-  char* env_level = getenv(LOG_ENV);
-  if (env_level != NULL) {
-    if (strcmp(env_level, LOG_ENV_DEBUG) == 0)  level = LOG_DEBUG;
-    else if (strcmp(env_level, LOG_ENV_INFO) == 0)  level = LOG_INFO;
-    else if (strcmp(env_level, LOG_ENV_WARNING) == 0)  level = LOG_WARNING;
-    else if (strcmp(env_level, LOG_ENV_ERROR) == 0)  level = LOG_ERR;
+  char* custom_level = NULL;
+
+  if (param_level != NULL) {
+    custom_level = param_level;
+  } 
+  else {
+    custom_level = getenv(LOG_ENV);
+  }
+
+  if (custom_level != NULL) {
+    if (strcmp(custom_level, LOG_ENV_DEBUG) == 0)  level = LOG_DEBUG;
+    else if (strcmp(custom_level, LOG_ENV_INFO) == 0)  level = LOG_INFO;
+    else if (strcmp(custom_level, LOG_ENV_WARNING) == 0)  level = LOG_WARNING;
+    else if (strcmp(custom_level, LOG_ENV_ERROR) == 0)  level = LOG_ERR;
   }
 
   if (self_test) {
