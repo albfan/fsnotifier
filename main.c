@@ -48,11 +48,12 @@
     "\n" \
     "Options: " \
     "\n" \
-    "   --selftest  perform some self-diagnostics (output will be logged and printed to console).\n" \
-    "   --log-level Explicit set of log level.\n" \
-    "   --roots     paths to inspect. Values separated by comma. Relative or absolute.\n" \
-    "   --version   fsnotifier version.\n" \
-    "   --help      Show this help.\n" \
+    "   --selftest   perform some self-diagnostics (output will be logged and printed to console).\n" \
+    "   --log-level  Explicit set of log level.\n" \
+    "   --roots      Paths to inspect. Values separated by comma. Relative or absolute.\n" \
+    "   --background execute in background. Do not read input.\n" \
+    "   --version    fsnotifier version.\n" \
+    "   --help       Show this help.\n" \
     "\n" \
     "Usage: " \
     "\n" \
@@ -94,6 +95,7 @@ static array* roots = NULL;
 
 static int log_level = 0;
 static bool self_test = false;
+static bool background = false;
 
 static void init_log(char* param_level);
 static void run_self_test();
@@ -134,6 +136,9 @@ int main(int argc, char** argv) {
     else if (strcmp(argv[param_pos], "--log-level") == 0) {
       param_level = argv[++param_pos];
     }
+    else if (strcmp(argv[param_pos], "--background") == 0) {
+      background = true;
+    }
     else {
       printf("unrecognized option: %s\n", argv[param_pos]);
       printf(HELP_MSG);
@@ -142,6 +147,10 @@ int main(int argc, char** argv) {
     param_pos++;
   }
 
+  if (background && param_roots == NULL) {
+   output("running in background needs the --roots option to be set");
+   exit(1);
+  }
   init_log(param_level);
   if (!self_test) {
     userlog(LOG_INFO, "started (v." VERSION ")");
@@ -170,7 +179,6 @@ int main(int argc, char** argv) {
     else {
       run_self_test();
     }
-
     unregister_roots();
   }
   else {
@@ -270,7 +278,8 @@ static void run_self_test() {
 
 
 static bool main_loop() {
-  int input_fd = fileno(stdin), inotify_fd = get_inotify_fd();
+  int input_fd = background ? -1 : fileno(stdin);
+  int inotify_fd = get_inotify_fd();
   int nfds = (inotify_fd > input_fd ? inotify_fd : input_fd) + 1;
   fd_set rfds;
   struct timeval timeout;
@@ -279,7 +288,7 @@ static bool main_loop() {
     usleep(50000);
 
     FD_ZERO(&rfds);
-    FD_SET(input_fd, &rfds);
+    if (!background) FD_SET(input_fd, &rfds);
     FD_SET(inotify_fd, &rfds);
     timeout = (struct timeval){MISSING_ROOT_TIMEOUT, 0};
 
@@ -289,7 +298,7 @@ static bool main_loop() {
         return false;
       }
     }
-    else if (FD_ISSET(input_fd, &rfds)) {
+    else if (!background && FD_ISSET(input_fd, &rfds)) {
       int result = read_input();
       if (result == 0) return true;
       else if (result != ERR_CONTINUE) return false;
