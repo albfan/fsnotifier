@@ -24,3 +24,7 @@ See an example:
     $ echo "foobar" > bar
 
 You can use `example.sh` as template and define what to do on function `process()`. Indeed, sourcing example.sh and redefine `process()` should be enough to use it.
+
+## Alternatives
+
+Although fsnotifier is fully operative, if you want serious file watcher, see https://github.com/rvoicilas/inotify-tools/wiki.
