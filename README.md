@@ -1,4 +1,5 @@
 # fsnotifier
+[![Coverage Status](https://coveralls.io/repos/albfan/fsnotifier/badge.svg?branch=master&service=github)](https://coveralls.io/github/albfan/fsnotifier?branch=master) [![Build Status](https://travis-ci.org/albfan/fsnotifier.svg?branch=master)](https://travis-ci.org/albfan/fsnotifier)
 
 File watcher
 

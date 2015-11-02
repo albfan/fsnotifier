@@ -1,0 +1,27 @@
+sudo: required
+
+dist: trusty
+
+language: c
+
+compiler:
+   - clang
+   - gcc
+
+env:
+   - CC_FLAGS="-O3 -Wall -std=c99 -D_BSD_SOURCE -D_XOPEN_SOURCE=500"
+   - COVERAGE=yes CC_FLAGS="-O3 -Wall --coverage -std=c99 -D_BSD_SOURCE -D_XOPEN_SOURCE=500"
+
+before_install:
+   - pip install --user cpp-coveralls
+   - sudo apt-get update -qq
+   - sudo apt-get install -qq libc6-dev-i386
+
+script:
+   - ./compile.sh
+   - cd t
+   - ./suite.sh
+   - cd ..
+
+after_success:
+   - if [ x"$COVERAGE" = "xyes" ]; then ~/.local/bin/coveralls -b $PWD ; fi

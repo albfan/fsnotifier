@@ -1,0 +1,8 @@
+ info: started (self-test mode) (v.20130715.1353)
+debug: inotify fd: 4
+ info: updating roots (curr:0, new:1)
+ info: registering root: 
+debug: watching : 1
+ info: unregistering root: 
+debug: unwatching : 1 ()
+ info: finished (0)

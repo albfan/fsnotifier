@@ -1,0 +1,27 @@
+fsnotifier - IntelliJ IDEA companion program for watching and reporting file and directory structure modifications.
+
+fsnotifier utilizes "user" facility of syslog(3) - messages usually can be found in /var/log/user.log.
+Verbosity is regulated via FSNOTIFIER_LOG_LEVEL environment variable, possible values are:    debug, info, warning, error, off; default is warning.
+
+Options: 
+   --selftest   perform some self-diagnostics (output will be logged and printed to console).
+   --log-level  Explicit set of log level.
+   --roots      Paths to inspect. Values separated by comma. Relative or absolute.
+   --background execute in background. Do not read input.
+   --version    fsnotifier version.
+   --help       Show this help.
+
+Usage: 
+   $ ./fsnotifier
+   ROOTS
+   <path to watch>
+   #
+
+From here file changes comes as a two line events
+
+   EVENT
+   file/path/changed
+
+Events: 
+CREATE, CHANGE, STATS, DELETE, RESET
+
