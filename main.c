@@ -28,6 +28,7 @@
 #include <sys/stat.h>
 #include <syslog.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define LOG_ENV "FSNOTIFIER_LOG_LEVEL"
 #define LOG_ENV_DEBUG "debug"
@@ -100,6 +101,7 @@ static bool background = false;
 static void init_log(char* param_level);
 static void run_self_test();
 static bool main_loop();
+static void int_handler(int dummy);
 static int read_input();
 static bool update_roots(array* new_roots);
 static void unregister_roots();
@@ -115,6 +117,11 @@ static void check_root_removal(const char*);
 int main(int argc, char** argv) {
   char* param_level = NULL;
   char* param_roots = NULL;
+
+  signal(SIGINT, int_handler);
+  signal(SIGKILL, int_handler);
+  signal(SIGQUIT, int_handler);
+  signal(SIGTERM, int_handler);
 
   int param_pos = 1;
   while (argc > param_pos) {
@@ -194,6 +201,14 @@ int main(int argc, char** argv) {
   return rv;
 }
 
+static void int_handler(int dummy) {
+  unregister_roots();
+  close_inotify();
+  array_delete(roots);
+  userlog(LOG_INFO, "finished (%d)", 0);
+  closelog();
+  exit(0);
+}
 
 static void init_log(char* param_level) {
   int level = LOG_WARNING;
